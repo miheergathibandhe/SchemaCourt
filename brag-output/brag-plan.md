@@ -43,3 +43,4 @@ Big red critical alert: "🚨 PRODUCTION INCIDENT: Stripe checkout-service v3.0.
 ## Audio direction
 - Role: Crisp screen demo audio with ambient voiceover and live Wispr Flow voice dictation waveform.
 - Restraint rule: No generic EDM tracks; focus on clarity, prompt interaction, and instant visual feedback.
+

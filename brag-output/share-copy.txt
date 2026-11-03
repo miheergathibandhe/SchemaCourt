@@ -15,3 +15,4 @@ Built with Switch Core local AI rooms, Telegram bridges, DuckDB & Wispr Flow.
 📺 Demo: https://github.com/miheergathibandhe/SchemaCourt#video-demo
 
 #HowISwitch #AI #DataEngineering #DuckDB #DataContracts #WisprFlow
+
