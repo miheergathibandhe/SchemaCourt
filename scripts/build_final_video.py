@@ -259,7 +259,7 @@ def render_slide_clip(ffmpeg_bin: str, html_path: Path, key: str, duration: floa
 
 
 def normalize_demo_clip(ffmpeg_bin: str, src_mp4: Path, out_mp4: Path, tag: str, text: str, freeze_end_sec: float = 0.0) -> None:
-    """Normalizes a recorded clip to 1920x1080 @ 30fps with a compact lower-right card (leaving typing & Wispr 100% uncovered)."""
+    """Normalizes a recorded clip to 1920x1080 @ 30fps with lower-third banner and freeze-frame."""
     tpad_filter = f",tpad=stop_mode=clone:stop_duration={freeze_end_sec}" if freeze_end_sec > 0 else ""
     font_bold = "C\\:/Windows/Fonts/segoeuib.ttf"
     font_reg = "C\\:/Windows/Fonts/segoeui.ttf"
@@ -267,18 +267,11 @@ def normalize_demo_clip(ffmpeg_bin: str, src_mp4: Path, out_mp4: Path, tag: str,
     escaped_tag = tag.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
     escaped_text = text.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
 
-    # Compact lower-right banner card: width=890px at bottom-right (x=980).
-    # Keeps left 980px (where terminal typing, Telegram input, and Wispr Flow live) completely unobstructed!
-    x_box = 980
-    w_box = 890
-    h_box = 100
-    y_box = "h-125"
-
     banner_filter = (
-        f",drawbox=x={x_box}:y={y_box}:width={w_box}:height={h_box}:color=black@0.88:t=fill"
-        f",drawbox=x={x_box}:y={y_box}:width={w_box}:height=3:color=0x38BDF8:t=fill"
-        f",drawtext=fontfile='{font_bold}':text='{escaped_tag}':fontsize=18:fontcolor=0x38BDF8:x={x_box}+24:y=h-108"
-        f",drawtext=fontfile='{font_reg}':text='{escaped_text}':fontsize=22:fontcolor=white:x={x_box}+24:y=h-76"
+        f",drawbox=y=ih-115:color=black@0.85:width=iw:height=115:t=fill"
+        f",drawbox=y=ih-115:color=0x38BDF8:width=iw:height=4:t=fill"
+        f",drawtext=fontfile='{font_bold}':text='{escaped_tag}':fontsize=22:fontcolor=0x38BDF8:x=60:y=h-92"
+        f",drawtext=fontfile='{font_reg}':text='{escaped_text}':fontsize=26:fontcolor=white:x=60:y=h-58"
     )
 
     vf_chain = (
@@ -313,14 +306,11 @@ def main():
     html_path = OUT_DIR / "slides.html"
     html_path.write_text(SLIDES_HTML, encoding="utf-8")
 
-    # 1. Render Intro & Section Title Slides (cached if already rendered)
+    # 1. Render Intro & Section Title Slides
     for idx, (key, (dur, _)) in enumerate(SLIDE_CONTENTS.items(), 1):
         out_slide = OUT_DIR / f"slide_{key}.mp4"
-        if out_slide.exists():
-            print(f"[{idx}/9] Using cached slide '{key}' ({dur}s)...", flush=True)
-        else:
-            print(f"[{idx}/9] Rendering kinetic slide '{key}' ({dur}s)...", flush=True)
-            render_slide_clip(ffmpeg_bin, html_path, key, dur, out_slide)
+        print(f"[{idx}/9] Rendering kinetic slide '{key}' ({dur}s)...", flush=True)
+        render_slide_clip(ffmpeg_bin, html_path, key, dur, out_slide)
 
     # 2. Normalize the 3 recorded demo clips (+ lower-third banners + freeze frames)
     c1_norm = OUT_DIR / "demo_clip1.mp4"
