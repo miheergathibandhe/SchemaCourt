@@ -89,7 +89,26 @@ Send:
 
 ---
 
+## 📺 Video Demo & Submission
+
+- **Full Master Demo (70s):** [SchemaCourt_Final_Demo.mp4](file:///C:/Users/mihee/Videos/Screen%20Recordings/SchemaCourt_Final_Demo.mp4)
+- **Detailed Hackathon Writeup:** [`SUBMISSION.md`](SUBMISSION.md)
+- **Launch Plan & Share Copy:** [`brag-output/share-copy.txt`](brag-output/share-copy.txt)
+
+### Video Timeline & Wispr Flow Integration:
+- `0:00 - 0:10` — **Kinetic Intro & Problem Statement:** The $17.2M silent schema drift disaster.
+- `0:10 - 0:22` — **Drift Simulation:** `python -m agents.drift_sentry --simulate-change` executed in terminal; Streamlit turns **CRITICAL RED**.
+- `0:22 - 0:34` — **Claude Root Cause Analysis:** Claude separates verified facts from suggestions, generates `COALESCE` diff, and halts: *"Refusing to touch code without Maya's sign-off."*
+- `0:34 - 1:02` — **🎙️ Wispr Flow Voice Approval & Instant Verification:** 
+  - Live Wispr Flow floating waveform pill captured dictating: `@SchemaCourtBot approve by @Maya_data. Apply the patch and verify both contracts`.
+  - Claude executes in-memory DuckDB audit across 200,000 rows (`<50ms`, `$0.00` variance).
+  - Streamlit dashboard instantly flips to **BRIGHT GREEN** (`✅ DUAL-CONTRACT VERIFIED`).
+- `1:02 - 1:10` — **Outro & Architecture:** Switch Core + Claude + Wispr Flow + DuckDB stack overview.
+
+---
+
 ## 🏆 Built For
 - **Track 1:** Best Business Workflow ($2,000)
 - **Side Bounty:** Code with Wispr ($500 voice dictation bonus)
+- **Social Track:** #HowISwitch
 - **Event:** *Flip the Switch Hackathon* powered by Switch AI, WeMakeDevs & DevTools Academy.
