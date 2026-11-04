@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 scripts/build_final_video.py
-Builds a complete, no-voiceover "Brag Repo" Launch Video + Stitched Demo MP4:
-1. Renders animated dark-mode HTML/CSS Intro, Section Cards, and Outro via Playwright.
-2. Burns clear lower-third explanation banners onto clip1(final).mp4, clip2(final).mp4, and clip3.mp4.
-3. Adds freeze-frames to the end of Clip 1 (Red Dashboard) and Clip 3 (Green Recovery).
-4. Concatenates everything into SchemaCourt_Final_Submission.mp4.
+Fixes the bottom-banner overlap issue:
+1. Places the PART 1 / 2 / 3 status bar in a dedicated 56px TOP header strip
+   above the video canvas so 0 pixels of the bottom typing area or Wispr Flow pill are covered.
+2. Adds a non-overlapping Wispr Flow spotlight callout in the empty dark space
+   under the Streamlit table during Part 3 (t=2.5s to t=13.5s).
 """
 import shutil
 import subprocess
@@ -14,10 +14,25 @@ import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUT_DIR = BASE_DIR / "build_video"
 
-# Automatically locate your 3 clips in project root, videos/ subfolder, or Videos screen recordings
+
+def get_ffmpeg_bin() -> str:
+    """Finds imageio_ffmpeg or system ffmpeg."""
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        sys_ffmpeg = shutil.which("ffmpeg")
+        if sys_ffmpeg:
+            return sys_ffmpeg
+        return "ffmpeg"
+
+
 def find_clip(candidates: list[str]) -> Path:
     search_folders = [
         BASE_DIR,
@@ -31,8 +46,7 @@ def find_clip(candidates: list[str]) -> Path:
             if p.exists():
                 return p
     raise FileNotFoundError(
-        f"Could not find {candidates[0]} in {search_folders}. "
-        f"Place your clips in {BASE_DIR} and re-run."
+        f"Could not find {candidates[0]} in {search_folders}."
     )
 
 
@@ -51,7 +65,6 @@ SLIDES_HTML = """<!DOCTYPE html>
     width: 1560px; padding: 64px 72px; border-radius: 24px;
     background: rgba(15, 23, 42, 0.88); border: 2px solid #1e293b;
     box-shadow: 0 25px 70px rgba(0,0,0,0.65);
-    animation: popIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .eyebrow {
     display: inline-block; padding: 8px 18px; border-radius: 999px;
@@ -65,19 +78,13 @@ SLIDES_HTML = """<!DOCTYPE html>
   p.lead { font-size: 30px; color: #cbd5e1; line-height: 1.45; margin-bottom: 36px; }
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 20px; }
   .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 28px; }
-  .card {
-    background: #090d16; border: 1px solid #334155; border-radius: 16px; padding: 26px 28px;
-  }
+  .card { background: #090d16; border: 1px solid #334155; border-radius: 16px; padding: 26px 28px; }
   .card-title { font-size: 22px; font-weight: 800; color: #38bdf8; margin-bottom: 10px; }
   .card-body { font-size: 21px; color: #e2e8f0; line-height: 1.4; }
   .stat-num { font-size: 46px; font-weight: 900; color: #10b981; margin-bottom: 6px; font-family: Consolas, monospace; }
   .code-pill {
     font-family: Consolas, monospace; background: #1e293b; color: #38bdf8;
     padding: 4px 12px; border-radius: 8px; font-size: 0.9em;
-  }
-  @keyframes popIn {
-    from { opacity: 0; transform: translateY(14px) scale(0.985); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 </style>
 </head>
@@ -92,6 +99,65 @@ SLIDES_HTML = """<!DOCTYPE html>
 </html>
 """
 
+OVERLAY_GEN_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, sans-serif; }
+  body { background: transparent; width: 1920px; height: 1080px; overflow: hidden; position: relative; }
+  .top-bar {
+    position: absolute; top: 0; left: 0; width: 1920px; height: 56px;
+    background: #090d16; border-bottom: 2px solid #0284c7;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+  }
+  .top-left { display: flex; align-items: center; gap: 14px; }
+  .part-pill {
+    background: #0284c7; color: #ffffff; font-weight: 800; font-size: 15px;
+    padding: 5px 12px; border-radius: 6px; letter-spacing: 0.8px; text-transform: uppercase;
+  }
+  .part-pill.purple { background: #7c3aed; }
+  .top-desc { color: #f8fafc; font-size: 18px; font-weight: 600; }
+  .top-right { color: #94a3b8; font-size: 14px; font-family: Consolas, monospace; }
+  .wispr-callout {
+    position: absolute; left: 515px; top: 845px;
+    background: linear-gradient(90deg, #5b21b6 0%, #7c3aed 100%);
+    border: 2px solid #c4b5fd; border-radius: 12px;
+    padding: 12px 20px; color: #ffffff;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
+    display: none; align-items: center; gap: 12px;
+  }
+  .wispr-title { font-size: 17px; font-weight: 800; letter-spacing: 0.4px; }
+  .wispr-sub { font-size: 13.5px; color: #ede9fe; margin-top: 2px; }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <div class="top-left">
+      <span class="part-pill" id="pill">PART 1</span>
+      <span class="top-desc" id="desc">Description</span>
+    </div>
+    <div class="top-right">SchemaCourt • Switch AI + Claude Code + DuckDB + Wispr Flow</div>
+  </div>
+  <div class="wispr-callout" id="wispr-box">
+    <div style="font-size: 26px;">👈 🎙️</div>
+    <div>
+      <div class="wispr-title">LIVE WISPR FLOW VOICE DICTATION</div>
+      <div class="wispr-sub">Watch the bottom-center waveform &amp; bottom-left Telegram input bar</div>
+    </div>
+  </div>
+  <script>
+    window.configureOverlay = function(partTitle, descText, isPurple, showWispr) {
+      const pill = document.getElementById('pill');
+      pill.textContent = partTitle;
+      pill.className = isPurple ? 'part-pill purple' : 'part-pill';
+      document.getElementById('desc').textContent = descText;
+      document.getElementById('wispr-box').style.display = showWispr ? 'flex' : 'none';
+    };
+  </script>
+</body>
+</html>
+"""
 
 SLIDE_CONTENTS = {
     "intro_1_problem": (
@@ -157,7 +223,7 @@ SLIDE_CONTENTS = {
         """
     ),
     "card_step2": (
-        2.8,
+        2.5,
         """
         <span class="eyebrow">PART 2 OF 3 • EVIDENCE-BACKED INVESTIGATION IN SWITCH</span>
         <h1><span class="code-pill">@SchemaCourtBot</span> Separates Verified Facts from Proposals</h1>
@@ -168,13 +234,13 @@ SLIDE_CONTENTS = {
         """
     ),
     "card_step3": (
-        2.8,
+        2.5,
         """
         <span class="eyebrow purple">PART 3 OF 3 • WISPR FLOW VOICE SIGN-OFF & DUAL VERIFICATION</span>
         <h1>Voice Approval ➔ Live SQL Patch ➔ $0.00 Delta Verified</h1>
         <p class="lead">
-          Watch the bottom-center <b>Wispr Flow</b> dictation bar as the Data Owner approves by voice—triggering dual-fixture
-          DuckDB verification and flipping the live dashboard back to <b style="color:#34d399;">GREEN</b>.
+          Watch the bottom-center <b>Wispr Flow</b> dictation bar and bottom-left Telegram input as the Data Owner
+          approves by voice—triggering dual-fixture DuckDB verification and flipping the dashboard <b style="color:#34d399;">GREEN</b>.
         </p>
         """
     ),
@@ -201,18 +267,6 @@ SLIDE_CONTENTS = {
 }
 
 
-def get_ffmpeg_bin() -> str:
-    """Finds imageio_ffmpeg or system ffmpeg."""
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        sys_ffmpeg = shutil.which("ffmpeg")
-        if sys_ffmpeg:
-            return sys_ffmpeg
-        return "ffmpeg"
-
-
 def run_ffmpeg(ffmpeg_bin: str, args: list[str]) -> None:
     cmd = [ffmpeg_bin, "-y", "-hide_banner", "-loglevel", "error"] + args
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -220,74 +274,98 @@ def run_ffmpeg(ffmpeg_bin: str, args: list[str]) -> None:
         raise RuntimeError(f"FFmpeg error:\n{res.stderr}")
 
 
-def render_slide_clip(ffmpeg_bin: str, html_path: Path, key: str, duration: float, out_mp4: Path) -> None:
-    """Records a high-res HTML slide via Playwright and normalizes it to 1920x1080 30fps MP4."""
-    tmp_dir = OUT_DIR / f"_tmp_{key}"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    _, html_body = SLIDE_CONTENTS[key]
-
+def render_slides_and_overlays(ffmpeg_bin: str, slides_html: Path, overlay_html: Path) -> None:
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
-        context = browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            record_video_dir=str(tmp_dir),
-            record_video_size={"width": 1920, "height": 1080},
-        )
-        page = context.new_page()
-        page.goto(html_path.as_uri())
-        page.evaluate("(html) => window.showSlide(html)", html_body)
-        time.sleep(duration + 0.3)
-        video = page.video
-        context.close()
+
+        # 1. Render transparent PNG overlays (Top header bars + Wispr callout)
+        ov_page = browser.new_page(viewport={"width": 1920, "height": 1080})
+        ov_page.goto(overlay_html.as_uri())
+
+        overlays = [
+            ("ov_part1.png", "PART 1: BREAKING CHANGE", "checkout-service v3.0 drops discount_cents -> $17.2M revenue evaluates to NULL", False, False),
+            ("ov_part2.png", "PART 2: SWITCH AI INVESTIGATION", "@SchemaCourtBot (Claude Code) isolates drift, proposes COALESCE diff & awaits @maya_data", False, False),
+            ("ov_part3_base.png", "PART 3: WISPR FLOW VOICE SIGN-OFF", "Data Owner approves via Wispr Flow voice dictation -> Dual-contract check -> GREEN", True, False),
+            ("ov_part3_wispr.png", "PART 3: WISPR FLOW VOICE SIGN-OFF", "Data Owner approves via Wispr Flow voice dictation -> Dual-contract check -> GREEN", True, True),
+        ]
+        for fname, title, desc, is_purple, show_wispr in overlays:
+            ov_page.evaluate(
+                "(args) => window.configureOverlay(args.t, args.d, args.p, args.w)",
+                {"t": title, "d": desc, "p": is_purple, "w": show_wispr},
+            )
+            ov_page.screenshot(path=str(OUT_DIR / fname), omit_background=True)
+        ov_page.close()
+
+        # 2. Render full-screen title slides
+        for key, (dur, html_body) in SLIDE_CONTENTS.items():
+            tmp_dir = OUT_DIR / f"_tmp_{key}"
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            context = browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                record_video_dir=str(tmp_dir),
+                record_video_size={"width": 1920, "height": 1080},
+            )
+            page = context.new_page()
+            page.goto(slides_html.as_uri())
+            page.evaluate("(html) => window.showSlide(html)", html_body)
+            time.sleep(dur + 0.3)
+            video = page.video
+            context.close()
+            raw_webm = Path(video.path())
+
+            out_mp4 = OUT_DIR / f"slide_{key}.mp4"
+            run_ffmpeg(
+                ffmpeg_bin,
+                [
+                    "-i", str(raw_webm),
+                    "-t", str(dur),
+                    "-vf", "scale=1920:1080,fps=30,format=yuv420p",
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+                    "-an", str(out_mp4),
+                ],
+            )
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
         browser.close()
-        raw_webm = Path(video.path())
+
+
+def process_clip_with_top_header(
+    ffmpeg_bin: str,
+    src_mp4: Path,
+    overlay_png: Path,
+    out_mp4: Path,
+    freeze_end_sec: float = 0.0,
+    wispr_overlay_png: Path | None = None,
+) -> None:
+    """
+    Scales the source video into 1920x1024 positioned at y=56 (leaving the bottom 100% uncovered!)
+    and composites the 56px top header PNG (plus the non-overlapping Wispr spotlight in Part 3).
+    """
+    tpad = f",tpad=stop_mode=clone:stop_duration={freeze_end_sec}" if freeze_end_sec > 0 else ""
+    base_chain = (
+        f"[0:v]scale=1920:1024:force_original_aspect_ratio=decrease,"
+        f"pad=1920:1080:(ow-iw)/2:56+(1024-ih)/2:black,fps=30{tpad}[vid];"
+    )
+
+    if wispr_overlay_png is None:
+        filter_complex = f"{base_chain}[vid][1:v]overlay=0:0,format=yuv420p[out]"
+        inputs = ["-i", str(src_mp4), "-i", str(overlay_png)]
+    else:
+        # Show the Wispr spotlight callout in the empty space under the Streamlit table from t=2.5s to t=13.5s
+        filter_complex = (
+            f"{base_chain}"
+            f"[vid][1:v]overlay=0:0[tmp];"
+            f"[tmp][2:v]overlay=0:0:enable='between(t,2.5,13.5)',format=yuv420p[out]"
+        )
+        inputs = ["-i", str(src_mp4), "-i", str(overlay_png), "-i", str(wispr_overlay_png)]
 
     run_ffmpeg(
         ffmpeg_bin,
-        [
-            "-i", str(raw_webm),
-            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
-            "-t", str(duration),
-            "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x090D16,fps=30,format=yuv420p",
+        inputs + [
+            "-filter_complex", filter_complex,
+            "-map", "[out]",
             "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
-            str(out_mp4),
-        ],
-    )
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-def normalize_demo_clip(ffmpeg_bin: str, src_mp4: Path, out_mp4: Path, tag: str, text: str, freeze_end_sec: float = 0.0) -> None:
-    """Normalizes a recorded clip to 1920x1080 @ 30fps with lower-third banner and freeze-frame."""
-    tpad_filter = f",tpad=stop_mode=clone:stop_duration={freeze_end_sec}" if freeze_end_sec > 0 else ""
-    font_bold = "C\\:/Windows/Fonts/segoeuib.ttf"
-    font_reg = "C\\:/Windows/Fonts/segoeui.ttf"
-
-    escaped_tag = tag.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
-    escaped_text = text.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
-
-    banner_filter = (
-        f",drawbox=y=ih-115:color=black@0.85:width=iw:height=115:t=fill"
-        f",drawbox=y=ih-115:color=0x38BDF8:width=iw:height=4:t=fill"
-        f",drawtext=fontfile='{font_bold}':text='{escaped_tag}':fontsize=22:fontcolor=0x38BDF8:x=60:y=h-92"
-        f",drawtext=fontfile='{font_reg}':text='{escaped_text}':fontsize=26:fontcolor=white:x=60:y=h-58"
-    )
-
-    vf_chain = (
-        f"scale=1920:1080:force_original_aspect_ratio=decrease,"
-        f"pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black,fps=30{banner_filter}{tpad_filter},format=yuv420p"
-    )
-    run_ffmpeg(
-        ffmpeg_bin,
-        [
-            "-i", str(src_mp4),
-            "-vf", vf_chain,
-            "-af", "apad",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-c:a", "aac", "-b:a", "192k",
-            "-shortest",
-            str(out_mp4),
+            "-an", str(out_mp4),
         ],
     )
 
@@ -295,62 +373,53 @@ def normalize_demo_clip(ffmpeg_bin: str, src_mp4: Path, out_mp4: Path, tag: str,
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     ffmpeg_bin = get_ffmpeg_bin()
-    print(f"Using FFmpeg at: {ffmpeg_bin}")
+    print(f"Using FFmpeg at: {ffmpeg_bin}", flush=True)
 
     clip1_src = find_clip(["clip1(final).mp4", "clip1.mp4"])
     clip2_src = find_clip(["clip2(final).mp4", "clip2.mp4"])
     clip3_src = find_clip(["clip3.mp4", "clip3(final).mp4"])
 
-    print(f"Found clips:\n  1: {clip1_src.name}\n  2: {clip2_src.name}\n  3: {clip3_src.name}")
+    slides_html = OUT_DIR / "slides.html"
+    slides_html.write_text(SLIDES_HTML, encoding="utf-8")
+    overlay_html = OUT_DIR / "overlays.html"
+    overlay_html.write_text(OVERLAY_GEN_HTML, encoding="utf-8")
 
-    html_path = OUT_DIR / "slides.html"
-    html_path.write_text(SLIDES_HTML, encoding="utf-8")
+    print("[1/4] Rendering slides and non-overlapping top header overlays...", flush=True)
+    render_slides_and_overlays(ffmpeg_bin, slides_html, overlay_html)
 
-    # 1. Render Intro & Section Title Slides
-    for idx, (key, (dur, _)) in enumerate(SLIDE_CONTENTS.items(), 1):
-        out_slide = OUT_DIR / f"slide_{key}.mp4"
-        print(f"[{idx}/9] Rendering kinetic slide '{key}' ({dur}s)...", flush=True)
-        render_slide_clip(ffmpeg_bin, html_path, key, dur, out_slide)
+    c1_out = OUT_DIR / "demo_clip1.mp4"
+    c2_out = OUT_DIR / "demo_clip2.mp4"
+    c3_out = OUT_DIR / "demo_clip3.mp4"
 
-    # 2. Normalize the 3 recorded demo clips (+ lower-third banners + freeze frames)
-    c1_norm = OUT_DIR / "demo_clip1.mp4"
-    c2_norm = OUT_DIR / "demo_clip2.mp4"
-    c3_norm = OUT_DIR / "demo_clip3.mp4"
-
-    print("[7/9] Processing Clip 1 (+ banner & +3s freeze on Red Failing Dashboard)...", flush=True)
-    normalize_demo_clip(
-        ffmpeg_bin, clip1_src, c1_norm,
-        tag="PART 1: THE BREAKING CHANGE",
-        text="checkout-service drops discount_cents -> $17.2M revenue evaluates to NULL",
-        freeze_end_sec=3.0
+    print("[2/4] Processing Clip 1 (Top header bar + 3s freeze on Red Dashboard)...", flush=True)
+    process_clip_with_top_header(
+        ffmpeg_bin, clip1_src, OUT_DIR / "ov_part1.png", c1_out, freeze_end_sec=3.0
     )
 
-    print("[8/9] Processing Clip 2 (+ banner & +2s freeze on Switch AI Investigation)...", flush=True)
-    normalize_demo_clip(
-        ffmpeg_bin, clip2_src, c2_norm,
-        tag="PART 2: EVIDENCE-BACKED INVESTIGATION",
-        text="Claude Code isolates drift, generates COALESCE patch, and pauses for @maya_data",
-        freeze_end_sec=2.0
+    print("[3/4] Processing Clip 2 (Top header bar + bottom typing bar 100% uncovered)...", flush=True)
+    process_clip_with_top_header(
+        ffmpeg_bin, clip2_src, OUT_DIR / "ov_part2.png", c2_out, freeze_end_sec=2.0
     )
 
-    print("[9/9] Processing Clip 3 (+ banner & +4s freeze on Wispr Flow & Recovery)...", flush=True)
-    normalize_demo_clip(
-        ffmpeg_bin, clip3_src, c3_norm,
-        tag="PART 3: WISPR FLOW VOICE SIGN-OFF & PARITY AUDIT",
-        text="Data Owner voice approval -> 200,000 rows audited in <50ms -> Dashboard flips GREEN",
-        freeze_end_sec=4.0
+    print("[4/4] Processing Clip 3 (Top header + Wispr Flow spotlight + 4s freeze on Green Dashboard)...", flush=True)
+    process_clip_with_top_header(
+        ffmpeg_bin,
+        clip3_src,
+        OUT_DIR / "ov_part3_base.png",
+        c3_out,
+        freeze_end_sec=4.0,
+        wispr_overlay_png=OUT_DIR / "ov_part3_wispr.png",
     )
 
-    # 3. Assemble final ordered sequence
     ordered_files = [
         OUT_DIR / "slide_intro_1_problem.mp4",
         OUT_DIR / "slide_intro_2_brag.mp4",
         OUT_DIR / "slide_card_step1.mp4",
-        c1_norm,
+        c1_out,
         OUT_DIR / "slide_card_step2.mp4",
-        c2_norm,
+        c2_out,
         OUT_DIR / "slide_card_step3.mp4",
-        c3_norm,
+        c3_out,
         OUT_DIR / "slide_outro_brag.mp4",
     ]
 
@@ -369,15 +438,13 @@ def main():
         [
             "-f", "concat", "-safe", "0",
             "-i", str(concat_list),
-            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-c:a", "aac", "-b:a", "192k",
+            "-c", "copy",
             str(final_output),
         ],
     )
     shutil.copy2(final_output, final_output_videos)
-    print(f"\nSUCCESS! Your complete submission video is ready at:\n   1. {final_output}\n   2. {final_output_videos}")
+    print(f"\n🎉 FIXED! Bottom typing bar & Wispr Flow are now 100% visible:\n   1. {final_output}\n   2. {final_output_videos}", flush=True)
 
 
 if __name__ == "__main__":
     main()
-
