@@ -91,7 +91,7 @@ Send:
 
 ## 📺 Video Demo & Submission
 
-- **Full Master Demo (70s):** [SchemaCourt_Final_Demo.mp4](file:///C:/Users/mihee/Videos/Screen%20Recordings/SchemaCourt_Final_Demo.mp4)
+- **Full Master Demo (1080p60):** [`SchemaCourt_Master_1080p60.mp4`](SchemaCourt_Master_1080p60.mp4)
 - **Detailed Hackathon Writeup:** [`SUBMISSION.md`](SUBMISSION.md)
 - **Launch Plan & Share Copy:** [`brag-output/share-copy.txt`](brag-output/share-copy.txt)
 
