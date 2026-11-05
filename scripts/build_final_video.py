@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-scripts/build_final_video.py (Master High-Bitrate Edition)
-Implements all 5 judging upgrades:
-1. Explicit 2-second product promise at 0:00 ("SchemaCourt catches and repairs breaking data-contract changes—with human approval.")
-2. Concrete financial consequence ("Dashboards silently under-report revenue and ship incorrect financial reporting.")
-3. Owns the SchemaCourt Agent (@SchemaCourtBot / @drift-sentry) identity instead of generic @claude wrapper framing.
-4. Combines the 11s Product Teaser + Real Live Screen Recording (Clip 1 + Clip 2 + Clip 3) with non-overlapping top headers.
-5. Exports a High-Bitrate 1080p60 Master (-crf 14, -b:v 12M, -maxrate 16M, -bufsize 32M) to preserve fine SQL/code text.
+scripts/build_final_video.py (60-Second Submission Master • 15 Mbps CBR)
+Implements all final pre-submission edits:
+1. ~60-second total runtime; reaches the live app at 0:04.5 and failing dashboard by 0:13.
+2. Crops out Microsoft Edge tabs, URL bar, and the "Browse right away..." startup banner in Clip 1 & Clip 3.
+3. Minimalist opening slide: "A field moved. Revenue disappeared. SchemaCourt catches breaking data-contract changes—with human approval."
+4. Precise, honest framing: "A $17.2M simulated baseline metric evaluates to NULL after a schema change" + "Why alerts alone aren't enough".
+5. True 15 Mbps High-Bitrate CBR/ABR encoding (-b:v 15M -minrate 12M -maxrate 18M, nal-hrd=cbr) so YouTube/Devpost compression stays razor-sharp.
 """
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -39,7 +38,7 @@ def find_clip(candidates: list[str]) -> Path:
         BASE_DIR,
         BASE_DIR / "videos",
         Path("C:/Users/mihee/Videos/Screen Recordings"),
-        Path.cwd()
+        Path.cwd(),
     ]
     for folder in search_folders:
         for name in candidates:
@@ -63,39 +62,28 @@ SLIDES_HTML = """<!DOCTYPE html>
     color: #f8fafc; display: flex; align-items: center; justify-content: center;
   }
   .slide {
-    width: 1580px; padding: 60px 72px; border-radius: 24px;
+    width: 1540px; padding: 76px 84px; border-radius: 24px;
     background: rgba(15, 23, 42, 0.92); border: 2px solid #1e293b;
     box-shadow: 0 25px 70px rgba(0,0,0,0.75);
-  }
-  .promise-bar {
-    background: linear-gradient(90deg, #064e3b 0%, #0f172a 100%);
-    border: 1px solid #10b981; color: #ecfdf5;
-    padding: 12px 22px; border-radius: 12px; font-size: 23px; font-weight: 700;
-    margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between;
-  }
-  .promise-tag {
-    background: #10b981; color: #052e16; font-size: 14px; font-weight: 900;
-    padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 1px;
   }
   .eyebrow {
     display: inline-block; padding: 8px 18px; border-radius: 999px;
     font-size: 17px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
-    margin-bottom: 22px; background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6;
+    margin-bottom: 28px; background: #064e3b; color: #6ee7b7; border: 1px solid #10b981;
   }
-  .eyebrow.red { background: #7f1d1d; color: #fca5a5; border-color: #ef4444; }
-  .eyebrow.green { background: #064e3b; color: #6ee7b7; border-color: #10b981; }
-  .eyebrow.purple { background: #4c1d95; color: #ddd6fe; border-color: #8b5cf6; }
-  h1 { font-size: 62px; font-weight: 900; line-height: 1.12; margin-bottom: 22px; letter-spacing: -1px; }
-  p.lead { font-size: 29px; color: #cbd5e1; line-height: 1.45; margin-bottom: 32px; }
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 18px; }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 24px; }
+  h1 { font-size: 76px; font-weight: 900; line-height: 1.08; margin-bottom: 28px; letter-spacing: -1.5px; color: #ffffff; }
+  p.promise { font-size: 38px; font-weight: 600; color: #e2e8f0; line-height: 1.38; margin-bottom: 40px; }
+  .sub-pill {
+    display: inline-block; background: #090d16; border: 1px solid #334155;
+    padding: 14px 24px; border-radius: 12px; font-size: 22px; color: #38bdf8; font-weight: 600;
+  }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 32px; }
   .card { background: #090d16; border: 1px solid #334155; border-radius: 16px; padding: 24px 26px; }
-  .card-title { font-size: 22px; font-weight: 800; color: #38bdf8; margin-bottom: 10px; }
-  .card-body { font-size: 20px; color: #e2e8f0; line-height: 1.42; }
-  .stat-num { font-size: 44px; font-weight: 900; color: #10b981; margin-bottom: 6px; font-family: Consolas, monospace; }
+  .card-title { font-size: 20px; font-weight: 800; color: #38bdf8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .card-body { font-size: 21px; color: #e2e8f0; line-height: 1.4; }
   .code-pill {
     font-family: Consolas, monospace; background: #1e293b; color: #38bdf8;
-    padding: 4px 12px; border-radius: 8px; font-size: 0.9em;
+    padding: 3px 10px; border-radius: 6px; font-size: 0.9em;
   }
 </style>
 </head>
@@ -130,8 +118,16 @@ OVERLAY_GEN_HTML = """<!DOCTYPE html>
   .part-pill.purple { background: #7c3aed; }
   .top-desc { color: #f8fafc; font-size: 18px; font-weight: 600; }
   .top-right { color: #94a3b8; font-size: 14px; font-family: Consolas, monospace; }
+  /* Masks out the right-pane Edge browser tabs + localhost URL bar in Clip 3 */
+  .chrome-mask {
+    position: absolute; left: 690px; top: 56px; width: 1230px; height: 56px;
+    background: #0e1117; border-bottom: 1px solid #1e293b;
+    display: none; align-items: center; justify-content: space-between; padding: 0 24px;
+  }
+  .mask-title { color: #94a3b8; font-size: 14px; font-weight: 600; font-family: Consolas, monospace; }
+  .mask-badge { background: #1e293b; color: #38bdf8; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
   .wispr-callout {
-    position: absolute; left: 515px; top: 845px;
+    position: absolute; left: 520px; top: 840px;
     background: linear-gradient(90deg, #5b21b6 0%, #7c3aed 100%);
     border: 2px solid #c4b5fd; border-radius: 12px;
     padding: 12px 20px; color: #ffffff;
@@ -145,10 +141,14 @@ OVERLAY_GEN_HTML = """<!DOCTYPE html>
 <body>
   <div class="top-bar">
     <div class="top-left">
-      <span class="part-pill" id="pill">PART 1</span>
+      <span class="part-pill" id="pill">STEP 1</span>
       <span class="top-desc" id="desc">Description</span>
     </div>
-    <div class="top-right">SchemaCourt Agent (@SchemaCourtBot &amp; @drift-sentry) • Switch AI</div>
+    <div class="top-right">SchemaCourt • Simulated 100k-Row Baseline</div>
+  </div>
+  <div class="chrome-mask" id="chrome-mask">
+    <span class="mask-title">⚖️ SchemaCourt Live Contract Monitor (100,000 Fixture Rows)</span>
+    <span class="mask-badge">Auto-Refresh: 1s</span>
   </div>
   <div class="wispr-callout" id="wispr-box">
     <div style="font-size: 26px;">👈 🎙️</div>
@@ -158,12 +158,13 @@ OVERLAY_GEN_HTML = """<!DOCTYPE html>
     </div>
   </div>
   <script>
-    window.configureOverlay = function(partTitle, descText, isPurple, showWispr) {
+    window.configureOverlay = function(partTitle, descText, isPurple, showWispr, maskRightChrome) {
       const pill = document.getElementById('pill');
       pill.textContent = partTitle;
       pill.className = isPurple ? 'part-pill purple' : 'part-pill';
       document.getElementById('desc').textContent = descText;
       document.getElementById('wispr-box').style.display = showWispr ? 'flex' : 'none';
+      document.getElementById('chrome-mask').style.display = maskRightChrome ? 'flex' : 'none';
     };
   </script>
 </body>
@@ -171,131 +172,58 @@ OVERLAY_GEN_HTML = """<!DOCTYPE html>
 """
 
 SLIDE_CONTENTS = {
-    "intro_1_problem": (
-        5.0,
-        """
-        <div class="promise-bar">
-          <span>⚖️ <b>SchemaCourt</b> catches and repairs breaking data-contract changes—with human approval.</span>
-          <span class="promise-tag">LIVE DEMO</span>
-        </div>
-        <h1>A Field Moved. Revenue Disappeared.</h1>
-        <p class="lead">
-          Backend ships <span class="code-pill">checkout-service v3.0</span> and moves <span class="code-pill">discount_cents</span>
-          into <span class="code-pill">promo_struct</span>. Without a contract check, downstream models ship
-          <b style="color:#f87171;">corrupted financial reporting</b> and silently under-report <b style="color:#f87171;">$17.2M</b> as <span class="code-pill">NULL</span>.
-        </p>
-        <div class="grid">
-          <div class="card">
-            <div class="card-title" style="color:#f87171;">❌ Why Unchecked AI &amp; CI Alerts Fail</div>
-            <div class="card-body">CI alerts dump red logs without a fix. Auto-deploying AI patches without data-owner sign-off risks silent financial drift.</div>
-          </div>
-          <div class="card">
-            <div class="card-title" style="color:#34d399;">✅ The SchemaCourt Evidence Workflow</div>
-            <div class="card-body"><b>@SchemaCourtBot</b> &amp; <b>@drift-sentry</b> surface impact, propose a compatible repair, and wait for accountable human approval.</div>
-          </div>
-        </div>
-        """
-    ),
-    "intro_2_brag": (
-        4.8,
-        """
-        <div class="promise-bar">
-          <span>⚖️ <b>SchemaCourt</b> — Evidence-Backed Change Review Room for Data Contracts</span>
-          <span class="promise-tag">ARCHITECTURE</span>
-        </div>
-        <h1>AI Investigates &amp; Proposes.<br>Humans Control the Decision.</h1>
-        <p class="lead">
-          Powered by <b>Switch AI</b> in Telegram: uniting the Backend Producer, Data Owner (<span class="code-pill">@maya_data</span>),
-          <span class="code-pill">@SchemaCourtBot</span>, and <span class="code-pill">@drift-sentry</span> in one shared room.
-        </p>
-        <div class="grid-4">
-          <div class="card">
-            <div class="stat-num">100,000</div>
-            <div class="card-body">Parquet Rows Audited (Legacy + Drifted)</div>
-          </div>
-          <div class="card">
-            <div class="stat-num">$17.2M</div>
-            <div class="card-body">Financial Reporting Baseline Protected</div>
-          </div>
-          <div class="card">
-            <div class="stat-num">$0.00</div>
-            <div class="card-body">Measured Revenue Delta Across Tiers</div>
-          </div>
-          <div class="card">
-            <div class="stat-num" style="color:#a78bfa;">Wispr</div>
-            <div class="card-body">Voice-Driven Data Owner Sign-Off</div>
-          </div>
-        </div>
-        """
-    ),
-    "card_step1": (
-        2.2,
-        """
-        <span class="eyebrow red">LIVE DEMO • STEP 1 OF 3</span>
-        <h1>A Field Moves ➔ Financial Reporting Breaks</h1>
-        <p class="lead">
-          Watch the live contract monitor flip from <b style="color:#34d399;">$17.2M Passing</b> to <b style="color:#f87171;">NULL (Failing)</b>
-          when <span class="code-pill">checkout-service@v3.0.0-stripe</span> moves <span class="code-pill">discount_cents</span>.
-        </p>
-        """
-    ),
-    "card_step2": (
-        2.4,
-        """
-        <span class="eyebrow">LIVE DEMO • STEP 2 OF 3</span>
-        <h1><span class="code-pill">@SchemaCourtBot</span> Diagnoses &amp; Waits for <span class="code-pill">@maya_data</span></h1>
-        <p class="lead">
-          The SchemaCourt Agent separates verified schema evidence from its proposed <span class="code-pill">COALESCE</span> repair—and
-          halts until the human Data Owner approves.
-        </p>
-        """
-    ),
-    "card_step3": (
-        2.4,
-        """
-        <span class="eyebrow purple">LIVE DEMO • STEP 3 OF 3</span>
-        <h1>Human Voice Approval ➔ Dual-Contract Proof ($0.00 Delta)</h1>
-        <p class="lead">
-          <span class="code-pill">@maya_data</span> approves via <b>Wispr Flow</b> voice dictation. <span class="code-pill">@drift-sentry</span>
-          verifies all 100,000 Legacy &amp; Drifted rows before logging the decision.
-        </p>
-        """
-    ),
-    "outro_brag": (
+    "intro_hook": (
         4.5,
         """
-        <div class="promise-bar">
-          <span>✅ <b>SchemaCourt</b> — Catching &amp; Repairing Breaking Data Changes with Human Approval</span>
-          <span class="promise-tag">VERIFIED</span>
-        </div>
-        <h1>Evidence First. Human Approved. Zero Drift.</h1>
-        <p class="lead">
-          <b>Break Detected ➔ Evidence Surface ➔ Repair Proposed ➔ @maya_data Voice Approval ➔ Dual-Fixture Proof</b>
+        <span class="eyebrow">⚖️ SCHEMACOURT • DATA CONTRACT CHANGE REVIEW</span>
+        <h1>A field moved.<br>Revenue disappeared.</h1>
+        <p class="promise">
+          SchemaCourt catches breaking data-contract changes—with human approval.
         </p>
-        <div class="grid">
+        <div class="sub-pill">
+          Evidence, approval, and verification—not just alerts.
+        </div>
+        """
+    ),
+    "outro_summary": (
+        4.5,
+        """
+        <span class="eyebrow">✅ VERIFIED across 100,000 LEGACY &amp; DRIFTED FIXTURE ROWS</span>
+        <h1 style="font-size: 62px;">AI Investigates &amp; Proposes.<br>Humans Control the Decision.</h1>
+        <p class="promise" style="font-size: 28px; margin-bottom: 24px;">
+          A <b>$17.2M simulated baseline metric</b> evaluated to <span class="code-pill">NULL</span> after a schema change—caught,
+          approved by voice, and verified with <b>$0.00 delta</b>.
+        </p>
+        <div class="grid-3">
           <div class="card">
-            <div class="card-title">🛠️ SchemaCourt Stack</div>
-            <div class="card-body">@SchemaCourtBot • @drift-sentry • Switch AI • Telegram • Wispr Flow • DuckDB • Parquet • Streamlit</div>
+            <div class="card-title">Why Alerts Aren't Enough</div>
+            <div class="card-body">Evidence, approval, and dual-contract verification in one shared Switch Room.</div>
           </div>
           <div class="card">
-            <div class="card-title" style="color:#34d399;">📊 Dual-Contract Verification Proof</div>
-            <div class="card-body">100,000 Legacy Rows + 100,000 Drifted Rows = <b>$17,200,000.00 Net Revenue ($0.00 Delta)</b></div>
+            <div class="card-title">Accountable Sign-Off</div>
+            <div class="card-body"><b>@SchemaCourtBot</b> proposes the SQL repair; <b>@maya_data</b> approves via <b>Wispr Flow</b>.</div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="color:#34d399;">Dual-Fixture Proof</div>
+            <div class="card-body">100,000 Legacy + 100,000 Drifted Parquet rows verified in DuckDB (<b>$0.00 delta</b>).</div>
           </div>
         </div>
         """
     ),
 }
 
-# High-Bitrate 1080p60 Master Encoding Flags (~12-16 Mbps, CRF 14, High Profile)
-HIGH_QUALITY_VIDEO_FLAGS = [
+# True 15 Mbps CBR/ABR High-Profile H.264 Master Flags (No -crf override!)
+TRUE_15MBPS_VIDEO_FLAGS = [
     "-c:v", "libx264",
     "-profile:v", "high",
     "-level:v", "4.2",
-    "-preset", "fast",
-    "-crf", "14",
-    "-b:v", "12M",
-    "-maxrate", "16M",
-    "-bufsize", "32M",
+    "-preset", "medium",
+    "-b:v", "15M",
+    "-minrate", "12M",
+    "-maxrate", "18M",
+    "-bufsize", "30M",
+    "-x264-params", "nal-hrd=cbr:force-cfr=1",
+    "-g", "60",
     "-pix_fmt", "yuv420p",
 ]
 
@@ -311,26 +239,45 @@ def render_slides_and_overlays(ffmpeg_bin: str, slides_html: Path, overlay_html:
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=True)
 
-        # 1. Render transparent PNG overlays (Top header bars + Wispr callout)
+        # 1. Render transparent PNG overlays
         ov_page = browser.new_page(viewport={"width": 1920, "height": 1080})
         ov_page.goto(overlay_html.as_uri())
 
         overlays = [
-            ("ov_part1.png", "STEP 1: BREAKING CHANGE", "A field moved (discount_cents -> promo_struct) -> $17.2M financial model evaluates to NULL", False, False),
-            ("ov_part2.png", "STEP 2: SCHEMACOURT AGENT", "@SchemaCourtBot surfaces verified impact, proposes COALESCE repair & waits for @maya_data", False, False),
-            ("ov_part3_base.png", "STEP 3: HUMAN VOICE APPROVAL & PROOF", "@maya_data approves via Wispr Flow -> @drift-sentry verifies 100,000 rows ($0.00 delta)", True, False),
-            ("ov_part3_wispr.png", "STEP 3: HUMAN VOICE APPROVAL & PROOF", "@maya_data approves via Wispr Flow -> @drift-sentry verifies 100,000 rows ($0.00 delta)", True, True),
+            (
+                "ov_part1.png",
+                "1. SCHEMA CHANGE DETECTED",
+                "A $17.2M simulated baseline metric evaluates to NULL after discount_cents moves",
+                False, False, False
+            ),
+            (
+                "ov_part2.png",
+                "2. EVIDENCE & PROPOSAL",
+                "@SchemaCourtBot reports verified impact, proposes COALESCE repair & waits for @maya_data",
+                False, False, False
+            ),
+            (
+                "ov_part3_base.png",
+                "3. HUMAN APPROVAL & PROOF",
+                "@maya_data approves via Wispr Flow -> Verified across 100k legacy & drifted rows ($0.00 delta)",
+                True, False, True
+            ),
+            (
+                "ov_part3_wispr.png",
+                "3. HUMAN APPROVAL & PROOF",
+                "@maya_data approves via Wispr Flow -> Verified across 100k legacy & drifted rows ($0.00 delta)",
+                True, True, True
+            ),
         ]
-        for fname, title, desc, is_purple, show_wispr in overlays:
+        for fname, title, desc, is_purple, show_wispr, mask_chrome in overlays:
             ov_page.evaluate(
-                "(args) => window.configureOverlay(args.t, args.d, args.p, args.w)",
-                {"t": title, "d": desc, "p": is_purple, "w": show_wispr},
+                "(args) => window.configureOverlay(args.t, args.d, args.p, args.w, args.m)",
+                {"t": title, "d": desc, "p": is_purple, "w": show_wispr, "m": mask_chrome},
             )
             ov_page.screenshot(path=str(OUT_DIR / fname), omit_background=True)
         ov_page.close()
 
-        # 2. Render crisp PNG snapshots of each slide and encode directly to 60fps High-Bitrate MP4
-        #    (Using direct 1920x1080 PNG-to-MP4 encoding gives 10x sharper text!)
+        # 2. Render lossless PNG slides and encode at True 15 Mbps 60fps
         slide_page = browser.new_page(viewport={"width": 1920, "height": 1080})
         slide_page.goto(slides_html.as_uri())
 
@@ -338,7 +285,7 @@ def render_slides_and_overlays(ffmpeg_bin: str, slides_html: Path, overlay_html:
             slide_png = OUT_DIR / f"slide_{key}.png"
             out_mp4 = OUT_DIR / f"slide_{key}.mp4"
             slide_page.evaluate("(html) => window.showSlide(html)", html_body)
-            slide_page.wait_for_timeout(120)
+            slide_page.wait_for_timeout(100)
             slide_page.screenshot(path=str(slide_png))
 
             run_ffmpeg(
@@ -350,7 +297,7 @@ def render_slides_and_overlays(ffmpeg_bin: str, slides_html: Path, overlay_html:
                     "-t", str(dur),
                     "-vf", "scale=1920:1080:flags=lanczos,fps=60",
                 ]
-                + HIGH_QUALITY_VIDEO_FLAGS
+                + TRUE_15MBPS_VIDEO_FLAGS
                 + ["-an", str(out_mp4)],
             )
 
@@ -358,40 +305,45 @@ def render_slides_and_overlays(ffmpeg_bin: str, slides_html: Path, overlay_html:
         browser.close()
 
 
-def process_clip_with_top_header(
+def process_clip(
     ffmpeg_bin: str,
     src_mp4: Path,
     overlay_png: Path,
     out_mp4: Path,
+    crop_filter: str,
+    start_sec: float = 0.0,
     freeze_end_sec: float = 0.0,
     wispr_overlay_png: Path | None = None,
 ) -> None:
     """
-    Uses Lanczos scaling into 1920x1024 at y=56 (leaving the bottom 100% uncovered)
-    and encodes at 60fps High-Bitrate CRF 14 so fine SQL/code text stays crystal clear.
+    Trims dead start time, crops out browser chrome/banners, scales cleanly into 1920x1024 at y=56,
+    and encodes at a true 15 Mbps CBR/ABR so text remains ultra-sharp after upload.
     """
     tpad = f",tpad=stop_mode=clone:stop_duration={freeze_end_sec}" if freeze_end_sec > 0 else ""
     base_chain = (
-        f"[0:v]scale=1920:1024:force_original_aspect_ratio=decrease:flags=lanczos,"
+        f"[0:v]{crop_filter},"
+        f"scale=1920:1024:force_original_aspect_ratio=decrease:flags=lanczos,"
         f"pad=1920:1080:(ow-iw)/2:56+(1024-ih)/2:black,fps=60{tpad}[vid];"
     )
 
+    ss_args = ["-ss", str(start_sec)] if start_sec > 0 else []
+
     if wispr_overlay_png is None:
         filter_complex = f"{base_chain}[vid][1:v]overlay=0:0,format=yuv420p[out]"
-        inputs = ["-i", str(src_mp4), "-i", str(overlay_png)]
+        inputs = ss_args + ["-i", str(src_mp4), "-i", str(overlay_png)]
     else:
         filter_complex = (
             f"{base_chain}"
             f"[vid][1:v]overlay=0:0[tmp];"
-            f"[tmp][2:v]overlay=0:0:enable='between(t,2.5,13.5)',format=yuv420p[out]"
+            f"[tmp][2:v]overlay=0:0:enable='between(t,1.0,11.0)',format=yuv420p[out]"
         )
-        inputs = ["-i", str(src_mp4), "-i", str(overlay_png), "-i", str(wispr_overlay_png)]
+        inputs = ss_args + ["-i", str(src_mp4), "-i", str(overlay_png), "-i", str(wispr_overlay_png)]
 
     run_ffmpeg(
         ffmpeg_bin,
         inputs
         + ["-filter_complex", filter_complex, "-map", "[out]"]
-        + HIGH_QUALITY_VIDEO_FLAGS
+        + TRUE_15MBPS_VIDEO_FLAGS
         + ["-an", str(out_mp4)],
     )
 
@@ -399,7 +351,6 @@ def process_clip_with_top_header(
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     ffmpeg_bin = get_ffmpeg_bin()
-    print(f"Using FFmpeg at: {ffmpeg_bin}", flush=True)
 
     clip1_src = find_clip(["clip1(final).mp4", "clip1.mp4"])
     clip2_src = find_clip(["clip2(final).mp4", "clip2.mp4"])
@@ -410,43 +361,56 @@ def main():
     overlay_html = OUT_DIR / "overlays.html"
     overlay_html.write_text(OVERLAY_GEN_HTML, encoding="utf-8")
 
-    print("[1/4] Rendering lossless PNG slides -> 60fps High-Bitrate Master slides...", flush=True)
+    print("[1/4] Rendering simplified opening/closing slides & chrome-masking overlays...")
     render_slides_and_overlays(ffmpeg_bin, slides_html, overlay_html)
 
     c1_out = OUT_DIR / "demo_clip1.mp4"
     c2_out = OUT_DIR / "demo_clip2.mp4"
     c3_out = OUT_DIR / "demo_clip3.mp4"
 
-    print("[2/4] Encoding Clip 1 (Lanczos 1080p60 CRF 14 + 3s freeze on Red Dashboard)...", flush=True)
-    process_clip_with_top_header(
-        ffmpeg_bin, clip1_src, OUT_DIR / "ov_part1.png", c1_out, freeze_end_sec=3.0
+    # Clip 1: Skip first 2.3s (half-loaded state) & crop y=138..1042 to remove Edge tabs, URL bar & "Browse right away..." banner
+    print("[2/4] Encoding Clip 1 (Cropping out Edge banner/tabs + 2.5s freeze on Red Dashboard @ 15 Mbps)...")
+    process_clip(
+        ffmpeg_bin,
+        clip1_src,
+        OUT_DIR / "ov_part1.png",
+        c1_out,
+        crop_filter="crop=1776:904:72:138",
+        start_sec=2.3,
+        freeze_end_sec=2.5,
     )
 
-    print("[3/4] Encoding Clip 2 (Lanczos 1080p60 CRF 14 + @SchemaCourtBot diagnosis)...", flush=True)
-    process_clip_with_top_header(
-        ffmpeg_bin, clip2_src, OUT_DIR / "ov_part2.png", c2_out, freeze_end_sec=2.0
+    # Clip 2: Skip first 2.0s ("You created a group" empty box) & crop tight around Telegram window
+    print("[3/4] Encoding Clip 2 (Tight Telegram viewport @ 15 Mbps)...")
+    process_clip(
+        ffmpeg_bin,
+        clip2_src,
+        OUT_DIR / "ov_part2.png",
+        c2_out,
+        crop_filter="crop=1404:1036:258:20",
+        start_sec=2.0,
+        freeze_end_sec=1.5,
     )
 
-    print("[4/4] Encoding Clip 3 (Lanczos 1080p60 CRF 14 + Wispr Flow approval + 4s Green freeze)...", flush=True)
-    process_clip_with_top_header(
+    # Clip 3: Skip first 2.2s idle wait, crop desktop margins, mask right-pane Edge tabs/URL bar, keep Wispr bar 100% visible
+    print("[4/4] Encoding Clip 3 (Masked Edge tabs + Wispr Flow approval + Green recovery @ 15 Mbps)...")
+    process_clip(
         ffmpeg_bin,
         clip3_src,
         OUT_DIR / "ov_part3_base.png",
         c3_out,
-        freeze_end_sec=4.0,
+        crop_filter="crop=1780:1016:70:44",
+        start_sec=2.2,
+        freeze_end_sec=3.0,
         wispr_overlay_png=OUT_DIR / "ov_part3_wispr.png",
     )
 
     ordered_files = [
-        OUT_DIR / "slide_intro_1_problem.mp4",
-        OUT_DIR / "slide_intro_2_brag.mp4",
-        OUT_DIR / "slide_card_step1.mp4",
+        OUT_DIR / "slide_intro_hook.mp4",
         c1_out,
-        OUT_DIR / "slide_card_step2.mp4",
         c2_out,
-        OUT_DIR / "slide_card_step3.mp4",
         c3_out,
-        OUT_DIR / "slide_outro_brag.mp4",
+        OUT_DIR / "slide_outro_summary.mp4",
     ]
 
     concat_list = OUT_DIR / "concat_list.txt"
@@ -455,10 +419,7 @@ def main():
         encoding="utf-8"
     )
 
-    final_output = BASE_DIR / "SchemaCourt_Master_1080p60.mp4"
-    final_output_videos = Path("C:/Users/mihee/Videos/Screen Recordings/SchemaCourt_Master_1080p60.mp4")
-
-    print("Stitching final 1080p60 High-Bitrate Master MP4...", flush=True)
+    final_output = BASE_DIR / "SchemaCourt_Submission_60s_15Mbps.mp4"
     run_ffmpeg(
         ffmpeg_bin,
         [
@@ -468,8 +429,16 @@ def main():
             str(final_output),
         ],
     )
-    shutil.copy2(final_output, final_output_videos)
-    print(f"\nSUCCESS! High-Bitrate 1080p60 Master is ready:\n   1. {final_output}\n   2. {final_output_videos}", flush=True)
+    size_mb = round(final_output.stat().st_size / (1024 * 1024), 1)
+    print(f"\n🎉 60s HIGH-BITRATE MASTER READY ({size_mb} MB @ ~15 Mbps):\n   {final_output}")
+
+    # Also mirror to Videos / Screen Recordings for user accessibility
+    videos_dest = Path("C:/Users/mihee/Videos/Screen Recordings") / "SchemaCourt_Submission_60s_15Mbps.mp4"
+    try:
+        shutil.copy2(final_output, videos_dest)
+        print(f"   Mirrored to: {videos_dest}")
+    except Exception as e:
+        print(f"   Note: Could not mirror to Screen Recordings: {e}")
 
 
 if __name__ == "__main__":
